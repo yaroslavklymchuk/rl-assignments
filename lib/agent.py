@@ -1,6 +1,7 @@
 import copy
 from pathlib import Path
 import random
+import torch.optim as optim
 
 from gym.spaces import Discrete
 import numpy as np
@@ -64,16 +65,9 @@ class DQN(object):
             self.value_network.cuda()
             self.target_network.cuda()
 
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
-        # Define a loss (Huber loss is preferred) and Adam optimizer:            #
-        self.criterion = None
+        self.criterion = torch.nn.SmoothL1Loss
 
-        self.optimizer = None
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        self.optimizer = optim.Adam(value_network.parameters(), lr=learning_rate)
 
     def update_target(self):
         polyak_update(
