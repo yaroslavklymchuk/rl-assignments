@@ -65,7 +65,7 @@ class DQN(object):
             self.value_network.cuda()
             self.target_network.cuda()
 
-        self.criterion = torch.nn.SmoothL1Loss
+        self.criterion = torch.nn.SmoothL1Loss.forward
 
         self.optimizer = optim.Adam(value_network.parameters(), lr=learning_rate)
 
@@ -91,11 +91,15 @@ class DQN(object):
         v_a = LongTensor(v_a)
         v_s1 = FloatTensor(v_s1)
         v_r = FloatTensor(v_r)
-        v_d = FloatTensor(v_d)
+        #v_d = FloatTensor(v_d) #why do we need to make done variable as tensor
 
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        q_values = self.value_network(v_s0)
+        next_q_values = self.value_network(v_s1)
+
+        y_hat = q_values.gather(1, v_a.unsqueeze(1)).squeeze(1)
+        next_q_value = next_q_values.max(1)[0]
+        y = v_r + self.discount_factor * next_q_value * (1 - v_d)
+
         #   Here, you should implement the estimation of y_hat - predicted Q     #
         # value and y - target, i.e. the right-hand side of Bellman equation     #
 
@@ -106,13 +110,14 @@ class DQN(object):
             ########                        TASK 4                            ########
             ##########################################################################
             # Double DQN estimation                                                  #
-            pass
-            ##########################################################################
-            ########                        TASK 4                            ########
-            ##########################################################################
+            q_values = self.value_network(v_s0)
+            next_q_values = self.value_network(v_s1)
+            next_q_state_values = self.target_network(v_s1)
 
-        y = None
-        y_hat = None
+            y_hat = q_values.gather(1, v_a.unsqueeze(1)).squeeze(1)
+            next_q_value = next_q_state_values.gather(1, torch.max(next_q_values, 1)[1].unsqueeze(1)).squeeze(1)
+            y = v_r + self.discount_factor * next_q_value * (1 - v_d)
+
         ##########################################################################
         ########                        TASK 2                            ########
         ##########################################################################
