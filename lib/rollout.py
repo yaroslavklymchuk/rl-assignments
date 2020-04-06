@@ -27,12 +27,12 @@ class ReplayBuffer(object):
         state = np.expand_dims(s0, 0)
         next_state = np.expand_dims(s1, 0)
 
-        self._buffer.append((state, a, r, s1, d))
+        self._buffer.append((state, a, r, next_state, d))
 
     def sample(self, batch_size):
         """Return `batch_size` randomly chosen elements."""
         state, action, reward, next_state, done = zip(*random.sample(self._buffer, batch_size))
-        return np.concatenate(state), action, reward, np.concatenate(next_state), done
+        return np.concatenate(state), action, reward, np.concatenate(next_state), all(done)
 
     def __len__(self):
         """Return size of the buffer."""

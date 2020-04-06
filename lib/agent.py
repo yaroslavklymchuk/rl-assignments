@@ -65,7 +65,7 @@ class DQN(object):
             self.value_network.cuda()
             self.target_network.cuda()
 
-        self.criterion = torch.nn.SmoothL1Loss.forward
+        self.criterion = torch.nn.SmoothL1Loss().forward
 
         self.optimizer = optim.Adam(value_network.parameters(), lr=learning_rate)
 
@@ -78,7 +78,7 @@ class DQN(object):
 
     def update_value(self, replay_buffer):
         batch = replay_buffer.sample(self.batch_size)
-        v_s0, v_a, v_s1, v_r, v_d = zip(*batch)
+        v_s0, v_a, v_r, v_s1, v_d = batch
 
         if self.cuda:
             FloatTensor = torch.cuda.FloatTensor
@@ -141,10 +141,18 @@ class DQN(object):
         ##########################################################################
         # Implement epsilon-greedy policy using value_network. Also, you will    #
         # need to pick greedy actions if `force_greedy` is True                  #
-        return None
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        if force_greedy:
+            with torch.no_grad():
+                q_values = self.value_network(s)
+                return torch.argmax(q_values).item()
+        else:
+            sample = random.random()
+            if sample > self.eps:
+                with torch.no_grad():
+                    q_values = self.value_network(s)
+                    return torch.argmax(q_values).item()
+            else:
+                return random.randrange(self.action_space.n)
 
     def update_eps(self):
         self.eps = max(self.eps - self.eps_decay, 1e-2)
