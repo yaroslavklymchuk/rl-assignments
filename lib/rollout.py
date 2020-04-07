@@ -1,10 +1,7 @@
 import random
+import numpy as np
+from collections import deque
 
-
-##########################################################################
-########                        TASK 0                            ########
-##########################################################################
-# Implement ReplayBuffer class. See docstrings for details               #
 
 class ReplayBuffer(object):
     def __init__(self, capacity):
@@ -12,7 +9,7 @@ class ReplayBuffer(object):
         Arguments:
             capacity: Max number of elements in buffer
         """
-        pass
+        self._buffer = deque(maxlen=capacity)
 
     def push(self, s0, a, s1, r, d):
         """Push an element to the buffer.
@@ -27,16 +24,17 @@ class ReplayBuffer(object):
         If the buffer is full, start to rewrite elements
         starting from the oldest ones.
         """
-        pass
+        state = np.expand_dims(s0, 0)
+        next_state = np.expand_dims(s1, 0)
+
+        self._buffer.append((state, a, r, next_state, d))
 
     def sample(self, batch_size):
         """Return `batch_size` randomly chosen elements."""
-        pass
+        state, action, reward, next_state, done = zip(*random.sample(self._buffer, batch_size))
+        return np.concatenate(state), action, reward, np.concatenate(next_state), all(done)
 
     def __len__(self):
         """Return size of the buffer."""
-        pass
+        return len(self._buffer)
 
-##########################################################################
-########                        TASK 0                            ########
-##########################################################################

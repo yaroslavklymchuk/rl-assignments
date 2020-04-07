@@ -1,6 +1,7 @@
 import copy
 from pathlib import Path
 import random
+import torch.optim as optim
 
 from gym.spaces import Discrete
 import numpy as np
@@ -64,16 +65,9 @@ class DQN(object):
             self.value_network.cuda()
             self.target_network.cuda()
 
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
-        # Define a loss (Huber loss is preferred) and Adam optimizer:            #
-        self.criterion = None
+        self.criterion = torch.nn.SmoothL1Loss().forward
 
-        self.optimizer = None
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        self.optimizer = optim.Adam(value_network.parameters(), lr=learning_rate)
 
     def update_target(self):
         polyak_update(
@@ -84,7 +78,7 @@ class DQN(object):
 
     def update_value(self, replay_buffer):
         batch = replay_buffer.sample(self.batch_size)
-        v_s0, v_a, v_s1, v_r, v_d = zip(*batch)
+        v_s0, v_a, v_r, v_s1, v_d = batch
 
         if self.cuda:
             FloatTensor = torch.cuda.FloatTensor
@@ -97,11 +91,15 @@ class DQN(object):
         v_a = LongTensor(v_a)
         v_s1 = FloatTensor(v_s1)
         v_r = FloatTensor(v_r)
-        v_d = FloatTensor(v_d)
+        #v_d = FloatTensor(v_d) #why do we need to make done variable as tensor
 
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        q_values = self.value_network(v_s0)
+        next_q_values = self.value_network(v_s1)
+
+        y_hat = q_values.gather(1, v_a.unsqueeze(1)).squeeze(1)
+        next_q_value = next_q_values.max(1)[0]
+        y = v_r + self.discount_factor * next_q_value * (1 - v_d)
+
         #   Here, you should implement the estimation of y_hat - predicted Q     #
         # value and y - target, i.e. the right-hand side of Bellman equation     #
 
@@ -112,13 +110,14 @@ class DQN(object):
             ########                        TASK 4                            ########
             ##########################################################################
             # Double DQN estimation                                                  #
-            pass
-            ##########################################################################
-            ########                        TASK 4                            ########
-            ##########################################################################
+            q_values = self.value_network(v_s0)
+            next_q_values = self.value_network(v_s1)
+            next_q_state_values = self.target_network(v_s1)
 
-        y = None
-        y_hat = None
+            y_hat = q_values.gather(1, v_a.unsqueeze(1)).squeeze(1)
+            next_q_value = next_q_state_values.gather(1, torch.max(next_q_values, 1)[1].unsqueeze(1)).squeeze(1)
+            y = v_r + self.discount_factor * next_q_value * (1 - v_d)
+
         ##########################################################################
         ########                        TASK 2                            ########
         ##########################################################################
@@ -142,10 +141,18 @@ class DQN(object):
         ##########################################################################
         # Implement epsilon-greedy policy using value_network. Also, you will    #
         # need to pick greedy actions if `force_greedy` is True                  #
-        return None
-        ##########################################################################
-        ########                        TASK 2                            ########
-        ##########################################################################
+        if force_greedy:
+            with torch.no_grad():
+                q_values = self.value_network(s)
+                return torch.argmax(q_values).item()
+        else:
+            sample = random.random()
+            if sample > self.eps:
+                with torch.no_grad():
+                    q_values = self.value_network(s)
+                    return torch.argmax(q_values).item()
+            else:
+                return random.randrange(self.action_space.n)
 
     def update_eps(self):
         self.eps = max(self.eps - self.eps_decay, 1e-2)
